@@ -193,26 +193,27 @@ class Coder {
     }
     return true;
   } // put  
-  getFromBitArray(arr, numElems) {
-    // read num bytes
-    let b;
-    let numDwords = 0;
-    for (b = 0; b < 32; b++) {
-      const valBit = arr[b];
-      numDwords |= (valBit << b);
+  readDwordFromBitArray(arr, iterRead) {
+    iterRead.dword = 0;
+    for (let b = 0; b < 32; b++) {
+      const valBit = arr[iterRead.off];
+      iterRead.off++;
+      iterRead.dword |= (valBit << b);
     }
+    return iterRead.dword;
+  }
+  readCodeFromBitArray(arr, numElems, iterRead, numDwords) {
     this.m_code = new Array(numDwords);
     const numBits = numDwords * 32;
     if (numBits + 16 > numElems) {
       console.log(`too short bit array: Need more ${numBits + 16}`);
-      return '??';
+      return false;
     }
-    let valDword = 0;
-    let indBit = 0;
+    let valDword = 0; let indBit = 0;
     let indDword = 0;
-    for (b = 0; b < numBits; b++) {
-      const valBit = arr[b + 32];
-      const mask = valBit << indBit;
+    for (let b = 0; b < numBits; b++) {
+      const valBit = arr[iterRead.off]; iterRead.off++;
+      const mask = (valBit << indBit);
       valDword |= mask;
 
       // next bit
@@ -222,11 +223,21 @@ class Coder {
         valDword = 0; indDword++;
       }
     } // for
-    let valCrc = 0;
-    for (b = 0; b < 32; b++) {
-      const valBit = arr[32 + numBits + b];
-      valCrc |= (valBit << b);
+    return true;
+  }
+  getFromBitArray(arr, numElems) {
+    let iterRead = {
+      off: 0,
+      dword: 0,
+    };
+    const numDwords = this.readDwordFromBitArray(arr, iterRead);
+
+    const ok = this.readCodeFromBitArray(arr, numElems, iterRead, numDwords);
+    if (!ok) {
+      return '';
     }
+
+    const valCrc = this.readDwordFromBitArray(arr, iterRead);
     this.decode();
     const strRes = this.getStringFromCode();
     // check crc
