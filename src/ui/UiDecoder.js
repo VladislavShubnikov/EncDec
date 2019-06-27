@@ -39,6 +39,30 @@ class UiDecoder extends Component {
     const strText = evt.target.value;
     this.setState({ codeWord: strText });
   }
+  performDecode(imgObj) {
+    const canvas = document.createElement('canvas'); this.m_canvas = canvas;
+    canvas.width = imgObj.width; canvas.height = imgObj.height;
+    canvas.getContext('2d').drawImage(imgObj, 0, 0, imgObj.width, imgObj.height);
+    const imagePixels = canvas.getContext('2d').getImageData(0, 0, imgObj.width, imgObj.height).data;
+    const numBytes = imagePixels.length;
+    // if (numBytes !== imgObj.width * imgObj.height * 4) {
+    //   console.log(`handleDrop: wrong pixel format num byges = ${numBytes} `);
+    // }
+    this.m_numBytes = numBytes; this.m_pixels = imagePixels;
+    this.m_wImage = imgObj.width; this.m_hImage = imgObj.height;
+    const coder = this.m_coder;
+    coder.init();
+    coder.setPass(this.state.codeWord);
+    let textExtracted = coder.getFromArray(this.m_pixels, this.m_numBytes);
+    // console.log(`strExtracted  = ${textExtracted}`);
+    if (textExtracted.length === 0) {
+      textExtracted = 'Text cant be extracted! Possible reasons:\n 1) no embedded text in image\n2) wrong password';
+      this.setState({ extractSuccess: false });
+    } else {
+      this.setState({ extractSuccess: true });
+    }
+    this.setState({ strTextExtracted: textExtracted });
+  }
   handleDrop(files) {
     const numFiles = files.length;
     // console.log(`handleDrop: num files = ${numFiles}`);
@@ -57,35 +81,8 @@ class UiDecoder extends Component {
         const imgObj = this.m_ref.current;
         imgObj.src = img;
         imgObj.onload = () => {
-          // console.log(`handleDrop: img dims = ${imgObj.width} * ${imgObj.height} `);
-          const canvas = document.createElement('canvas');
-          this.m_canvas = canvas;
-          canvas.width = imgObj.width;
-          canvas.height = imgObj.height;
-          canvas.getContext('2d').drawImage(imgObj, 0, 0, imgObj.width, imgObj.height);
-          const imagePixels = canvas.getContext('2d').getImageData(0, 0, imgObj.width, imgObj.height).data;
-          const numBytes = imagePixels.length;
-          // if (numBytes !== imgObj.width * imgObj.height * 4) {
-          //   console.log(`handleDrop: wrong pixel format num byges = ${numBytes} `);
-          // }
-          this.m_numBytes = numBytes;
-          this.m_pixels = imagePixels;
-          this.m_wImage = imgObj.width;
-          this.m_hImage = imgObj.height;
-
-          const coder = this.m_coder;
-          coder.init();
-          coder.setPass(this.state.codeWord);
-          let textExtracted = coder.getFromArray(this.m_pixels, this.m_numBytes);
-          // console.log(`strExtracted  = ${textExtracted}`);
-          if (textExtracted.length === 0) {
-            textExtracted = 'Text cant be extracted! Possible reasons:\n 1) no embedded text in image\n2) wrong password';
-            this.setState({ extractSuccess: false });
-          } else {
-            this.setState({ extractSuccess: true });
-          }
-          this.setState({ strTextExtracted: textExtracted });
-        }
+          this.performDecode(imgObj);
+        } // onLoad
         
       };
       reader.readAsDataURL(file);
