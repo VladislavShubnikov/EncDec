@@ -1,4 +1,40 @@
 import Coder from './engine/Coder';
+import Randomizer from './engine/Randomizer';
+
+function _testEncDecBitArray(srcMsg) {
+  const coder = new Coder();
+  const STR_PASS = 'CrewOfDream';
+  coder.init();
+  coder.setPass(STR_PASS);
+  coder.setMessageDecoded(STR_PASS, srcMsg);
+
+  const ARR_SIZE = 512 * 512 * 4;
+  const arr = new Uint8Array(ARR_SIZE);
+  coder.putToBitArray(arr, ARR_SIZE);
+
+  coder.init();
+  coder.setPass(STR_PASS);
+  const strDecoded = coder.getFromBitArray(arr, ARR_SIZE);
+  return strDecoded;
+}
+
+function _testEncDecPixelArray(srcMsg) {
+  const coder = new Coder();
+  const STR_PASS = 'ShowMustGoOooon';
+  coder.init();
+  coder.setPass(STR_PASS);
+  coder.setMessageDecoded(STR_PASS, srcMsg);
+
+  const ARR_SIZE = 512 * 512 * 4;
+  const arr = new Uint8Array(ARR_SIZE);
+  coder.putToArray(arr, ARR_SIZE);
+
+  coder.init();
+  coder.setPass(STR_PASS);
+  const strDecoded = coder.getFromArray(arr, ARR_SIZE);
+  return strDecoded;
+}
+
 
 describe('App. tests for coder', () => {
 
@@ -85,15 +121,13 @@ describe('App. tests for coder', () => {
     // console.log(`src -> code -> src = ${str}  `);
     expect(str === STR_MSG).toBeTruthy();
   });
-
-
   it('getNextRand check non repeated', () => {
-    const coder = new Coder();
+    const randomizer = new Randomizer();
     const NUM_ITERS = 1024;
     const arr = new Uint32Array(NUM_ITERS);
     let i;
     for (i = 0; i < NUM_ITERS; i++) {
-      const rnd = coder.getNextRand();
+      const rnd = randomizer.getNextRand();
       arr[i] = rnd;
     } // for (i)
     // check not repeated
@@ -112,14 +146,13 @@ describe('App. tests for coder', () => {
         if (isEq) {
           console.log(`repeat is detected! ${a},${b},${c},${d}`);
         }
-
         expect(isEq).toBeFalsy();
       }
     }
   }); // it
 
   it('getNextRand check distribution', () => {
-    const coder = new Coder();
+    const randomizer = new Randomizer();
     const NUM_ITERS = 1024 * 2;
     const NUM_BINS = 16;
     const hist = [];
@@ -127,9 +160,8 @@ describe('App. tests for coder', () => {
     for (i = 0; i < NUM_BINS; i++) {
       hist.push(0);
     }
-
     for (i = 0; i < NUM_ITERS; i++) {
-      const rnd = coder.getNextRand() & (NUM_BINS - 1);
+      const rnd = randomizer.getNextRand() & (NUM_BINS - 1);
       hist[rnd]++;
     } // for (i)
     // normalize distrib
@@ -171,43 +203,15 @@ describe('App. tests for coder', () => {
     }
   }); // it
   it('encode, decode into bit array', () => {
-    const coder = new Coder();
-    const STR_PASS = 'ha';
-    let SRC_MSG = 'abcd';
-    coder.init();
-    coder.setPass(STR_PASS);
-    coder.setMessageDecoded(STR_PASS, SRC_MSG);
-
-    const ARR_SIZE = 512 * 512 * 4;
-    const arr = new Uint8Array(ARR_SIZE);
-    coder.putToBitArray(arr, ARR_SIZE);
-
-    coder.init();
-    coder.setPass(STR_PASS);
-    const strDecoded = coder.getFromBitArray(arr, ARR_SIZE);
-    // console.log(`decoded from bit arr = ${strDecoded}`);
+    const SRC_MSG = 'This everything was fine...';
+    const strDecoded = _testEncDecBitArray(SRC_MSG);
     expect(strDecoded === SRC_MSG).toBeTruthy();
   }); // it
-
-  it('rus check decode the same using bit array', () => {
-    const coder = new Coder();
-    const STR_PASS = 'NeSlishniVSaduDaze60';
-    let SRC_MSG = 'Привет, как дела. Всего небольшой текст!';
-    coder.init();
-    coder.setPass(STR_PASS);
-    coder.setMessageDecoded(STR_PASS, SRC_MSG);
-
-    const ARR_SIZE = 512 * 512 * 4;
-    const arr = new Uint8Array(ARR_SIZE);
-    coder.putToBitArray(arr, ARR_SIZE);
-
-    coder.init();
-    coder.setPass(STR_PASS);
-    const strDecoded = coder.getFromBitArray(arr, ARR_SIZE);
-    // console.log(`decoded from bit arr = ${strDecoded}`);
+  it('rus text check decode the same using bit array', () => {
+    const SRC_MSG = 'Привет, как дела. Всего небольшой текст!';
+    const strDecoded = _testEncDecBitArray(SRC_MSG);
     expect(strDecoded === SRC_MSG).toBeTruthy();
   }); // it
-
   it('check wrong pass for decode', () => {
     const coder = new Coder();
     const STR_PASS_A = 'Hella';
@@ -228,47 +232,14 @@ describe('App. tests for coder', () => {
     expect(strDecoded !== SRC_MSG).toBeTruthy();
     expect(strDecoded === '').toBeTruthy();
   }); // it
-
   it('encode, decode into pixel array', () => {
-    const coder = new Coder();
-    const STR_PASS = 'ha';
-    let SRC_MSG = 'abcd';
-    coder.init();
-    coder.setPass(STR_PASS);
-    coder.setMessageDecoded(STR_PASS, SRC_MSG);
-
-    const ARR_SIZE = 64 * 64 * 4;
-    const arr = new Uint8Array(ARR_SIZE);
-    coder.putToArray(arr, ARR_SIZE);
-
-    coder.init();
-    coder.setPass(STR_PASS);
-    const strDecoded = coder.getFromArray(arr, ARR_SIZE);
-    // console.log(`decoded from pixel arr = ${strDecoded}`);
+    const SRC_MSG = 'abcd1234';
+    const strDecoded = _testEncDecPixelArray(SRC_MSG);
     expect(strDecoded === SRC_MSG).toBeTruthy();
   }); // it
-
   it('rus letters encode, decode into pixel array', () => {
-    const coder = new Coder();
-    const STR_PASS = 'TopoliniyPuhZaraIyul';
     const SRC_MSG = 'Hello. Привет, это небольшой тест';
-    console.log(`enc rus = ${SRC_MSG}`);
-    coder.init();
-    coder.setPass(STR_PASS);
-    coder.setMessageDecoded(STR_PASS, SRC_MSG);
-
-    const ARR_SIZE = 512 * 512 * 4;
-    const arr = new Uint8Array(ARR_SIZE);
-    coder.putToArray(arr, ARR_SIZE);
-
-    coder.init();
-    coder.setPass(STR_PASS);
-    const strDecoded = coder.getFromArray(arr, ARR_SIZE);
-    console.log(`decoded from pixel arr rus = ${strDecoded}`);
+    const strDecoded = _testEncDecPixelArray(SRC_MSG);
     expect(strDecoded === SRC_MSG).toBeTruthy();
   }); // it
-  
-
 }); // describe
-
-

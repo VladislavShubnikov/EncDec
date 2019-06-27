@@ -99,25 +99,19 @@ class UiEncoder extends Component {
   }
   handleDrop(files) {
     const numFiles = files.length;
-    console.log(`handleDrop: num files = ${numFiles}`);
     if (numFiles !== 1) {
       console.log(`handleDrop: should be one file, but found ${numFiles}`);
       return;
     }
     const file = files[0];
-    console.log(`handleDrop: ${file.name}, ${file.type}`);
     if (file.type === 'image/png') {
       console.log(`handleDrop: load image...`);
       const reader = new FileReader();
       reader.onload = (evt) => {
         const img = evt.target.result;
-        // console.log(`handleDrop: img = ${img}`);
         const imgObj = this.m_ref.current;
         imgObj.src = img;
         imgObj.onload = () => {
-          console.log(`handleDrop: img dims = ${imgObj.width} * ${imgObj.height} `);
-
-
           const canvas = document.createElement('canvas');
           this.m_canvas = canvas;
           canvas.width = imgObj.width;
@@ -127,9 +121,8 @@ class UiEncoder extends Component {
           this.m_imageData = ctx.getImageData(0, 0, imgObj.width, imgObj.height);
           const imagePixels = this.m_imageData.data;
           const numBytes = imagePixels.length;
-          // console.log(`handleDrop: num bytes = ${numBytes} `);
           if (numBytes !== imgObj.width * imgObj.height * 4) {
-            console.log(`handleDrop: wrong pixel format num byges = ${numBytes} `);
+            console.log(`handleDrop: wrong pixel format num bytes = ${numBytes} `);
           }
           this.m_numBytes = numBytes;
           this.m_pixels = imagePixels;
@@ -161,7 +154,7 @@ class UiEncoder extends Component {
       <Form.Label className="text-left">
         Code word
       </Form.Label>
-      <Form.Control required type="password" placeholder="Enter code word here"
+      <Form.Control autoFocus required type="password" placeholder="Enter code word here"
         defaultValue={this.state.codeWord} onChange={this.onChangeCodeWord} />
       <Form.Label className="text-left">
         Your message

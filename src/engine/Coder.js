@@ -1,4 +1,6 @@
 
+import Randomizer from './Randomizer';
+
 const NUM_KEYS = 16;
 
 
@@ -11,6 +13,7 @@ class Coder {
     this.m_keys = [];
     this.m_strMessageDecoded = '';
     this.m_crc = 0;
+    this.m_randomizer = new Randomizer();
     this.init();
   } // end constr
   /**
@@ -37,31 +40,7 @@ class Coder {
     this.m_keys[13] =  0xe7d3fbc8;
     this.m_keys[14] =  0xd4ef3085;
     this.m_keys[15] =  0x8f0ccc92;
-    this.seedA = 1000003;
-    this.seedB = 73819;
-  }
-  /**
-   * Get pseudorandom number bit perturbation
-   * used in random sequence generator
-   * 
-   * @param {number} val - input integer
-   */
-  static xorShift(val) {
-    val ^= val << 13;
-    val ^= val >> 17;
-    val ^= val << 5;
-    return val;
-  }
-  /**
-   * Get next random value
-   * @return {number} integer in range [0.65535]
-   */
-  getNextRand() {
-    const a = Coder.xorShift(this.seedB);
-    const b = Coder.xorShift(this.seedA);
-    this.seedA = a;
-    this.seedB = b;
-    return (this.seedA ^ this.seedB) & 0xffff;
+    this.m_randomizer.init();
   }
   // init updateable keys with password string
   /**
@@ -119,7 +98,7 @@ class Coder {
       crc += (code * k) & 0x3fffffff;
       this.updateKeys();
     }
-    // crc = crc & 0x3fffffff;
+    crc = crc & 0x3fffffff;
     return crc;
   }
   static leftRotate(x, c) {
@@ -212,7 +191,7 @@ class Coder {
    * Get next offset for pixel write/read
    */
   getNextOff() {
-    const ret = 1 + (this.getNextRand() & 7);
+    const ret = 1 + (this.m_randomizer.getNextRand() & 7);
     return ret;
   }
   /**
@@ -279,10 +258,7 @@ class Coder {
       valCrc |= mask;
     }
     this.decode();
-    let strRes = '';
-    for (let i = 0; i < numDwords; i++) {
-      strRes = strRes.concat(String.fromCharCode(this.m_code[i]));
-    }
+    const strRes = this.getStringFromCode();
     // check crc
     const crcMatch = this.getMessageCrc(PASS_FOR_CRC, strRes);
 
@@ -301,7 +277,7 @@ class Coder {
    * 
    * @param {object} arr - array of pixels, expect Uint8Array type or like this
    * @param {number} numElems - number of elements in pixel array
-   * @return {boolean} false, if message cant be fir into array
+   * @return {boolean} false, if message cant be fit into array
    */
   putToArray(arr, numElems) {
     const numBits = (this.m_code.length + 2) * 32;
@@ -312,18 +288,10 @@ class Coder {
     let off = START_OFF_INCAPSULATE * 4;
     for (let b = 0; b < numBits; b++) {
       const bit = this.getBit(b);
-      // console.log(`put[ ${off} ] = ${bit} `);
       let val = arr[off];
-      if(bit === 0) {
-        // clear low bit
-        val &= 0xfffffffe;
-      } else {
-        // set low bit
-        val |= 1;
-      }
+      val = (bit === 0) ? (val & 0xfffffffe) : (val | 1);
       arr[off] = val;
-      // next off
-      off += this.getNextOff() * 4;
+      off += this.getNextOff() * 4; // next off
       if (off >= numElems) {
         console.log(`too small array, need at least ${off} elements`);
         return false;
@@ -331,6 +299,35 @@ class Coder {
     }
     return true;
   } // put
+  readDwordFromPixelArray(arr, iterRead) {
+    iterRead.dword = 0;
+    for (let b = 0; b < 32; b++) {
+      const valBit = ((arr[iterRead.off] & 1) === 1) ? 1 : 0;
+      const mask = valBit << b;
+      iterRead.dword |= mask;
+      iterRead.off += this.getNextOff() * 4; // next off
+    }
+    return iterRead.dword;
+  }
+  readCodeFromPixelArray(arr, numElems, iterRead, numDwords) {
+    const numBits = numDwords * 32;
+    let valDword = 0; let indBit = 0;
+    let indDword = 0;
+    for (let b = 0; b < numBits; b++) {
+      const valBit = ((arr[iterRead.off] & 1) === 1) ? 1 : 0;
+      valDword |= (valBit << indBit); indBit++; // next bit
+      if (indBit >= 32) {
+        indBit = 0; this.m_code[indDword] = valDword;
+        valDword = 0; indDword++;
+      }
+      iterRead.off += this.getNextOff() * 4; // next off
+      if (iterRead.off > numElems) {
+        console.log(`small array, need more then ${iterRead.off}`);
+        return false;
+      }
+    } // for
+    return true;
+  }
   /**
    * Get message from pixel array
    * 
@@ -338,17 +335,11 @@ class Coder {
    * @param {number} numElems - number of elements in array
    */
   getFromArray(arr, numElems) {
-    let b;
-    let off = START_OFF_INCAPSULATE * 4;
-    let numDwords = 0;
-    for (b = 0; b < 32; b++) {
-      const valBit = ((arr[off] & 1) === 1) ? 1 : 0;
-      // console.log(`getN[ ${off} ] = ${valBit} `);
-      const mask = valBit << b;
-      numDwords |= mask;
-      // next off
-      off += this.getNextOff() * 4;
-    }
+    const iterRead = {
+      off: START_OFF_INCAPSULATE * 4,
+      dword: 0
+    };
+    const numDwords = this.readDwordFromPixelArray(arr, iterRead);
     const TOO_MAX = 1024 * 32;
     if ((numDwords === 0) || (numDwords > TOO_MAX) )
     {
@@ -359,48 +350,15 @@ class Coder {
     for (let i = 0; i < numDwords; i++) {
       this.m_code.push(555);
     }
-
-    const numBits = numDwords * 32;
-    let valDword = 0;
-    let indBit = 0;
-    let indDword = 0;
-    for (b = 0; b < numBits; b++) {
-      const valBit = ((arr[off] & 1) === 1) ? 1 : 0;
-      // console.log(`getS[ ${off} ] = ${valBit} `);
-      const mask = valBit << indBit;
-      valDword |= mask;
-
-      // next bit
-      indBit++;
-      if (indBit >= 32) {
-        indBit = 0;
-        this.m_code[indDword] = valDword;
-        valDword = 0;
-        indDword++;
-      }
-      // next off
-      off += this.getNextOff() * 4;
-      if (off > numElems) {
-        console.log(`small array, need more then ${off}`);
-        return '';
-      }
-    } // for
-    let valCrc = 0;
-    for (b = 0; b < 32; b++) {
-      const valBit = ((arr[off] & 1) === 1) ? 1 : 0;
-      // console.log(`getN[ ${off} ] = ${valBit} `);
-      const mask = valBit << b;
-      valCrc |= mask;
-      // next off
-      off += this.getNextOff() * 4;
+    const okR = this.readCodeFromPixelArray(arr, numElems, iterRead, numDwords);
+    if (!okR) {
+      return '';
     }
+    const valCrc = this.readDwordFromPixelArray(arr, iterRead);
     // decode bytes in m_code
     this.decode();
     // convert into string
-    let strRes = '';
-    for (let i = 0; i < numDwords; i++) {
-      strRes = strRes.concat(String.fromCharCode(this.m_code[i]));
-    }
+    const strRes = this.getStringFromCode();
 
     // check crc
     const crcMatch = this.getMessageCrc(PASS_FOR_CRC, strRes);

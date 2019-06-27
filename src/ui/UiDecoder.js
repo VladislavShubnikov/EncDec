@@ -65,10 +65,9 @@ class UiDecoder extends Component {
           canvas.getContext('2d').drawImage(imgObj, 0, 0, imgObj.width, imgObj.height);
           const imagePixels = canvas.getContext('2d').getImageData(0, 0, imgObj.width, imgObj.height).data;
           const numBytes = imagePixels.length;
-          // console.log(`handleDrop: num bytes = ${numBytes} `);
-          if (numBytes !== imgObj.width * imgObj.height * 4) {
-            console.log(`handleDrop: wrong pixel format num byges = ${numBytes} `);
-          }
+          // if (numBytes !== imgObj.width * imgObj.height * 4) {
+          //   console.log(`handleDrop: wrong pixel format num byges = ${numBytes} `);
+          // }
           this.m_numBytes = numBytes;
           this.m_pixels = imagePixels;
           this.m_wImage = imgObj.width;
@@ -109,7 +108,7 @@ class UiDecoder extends Component {
       <Form.Label className="text-left">
         Code word
       </Form.Label>
-      <Form.Control required type="password" placeholder="Enter code word here"
+      <Form.Control autoFocus required type="password" placeholder="Enter code word here"
         defaultValue={this.state.codeWord} onChange={this.onChangeCodeWord} />
     </Form>;
 
