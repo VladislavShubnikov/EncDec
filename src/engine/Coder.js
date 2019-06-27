@@ -11,7 +11,6 @@ class Coder {
   constructor() {
     // 16 keys
     this.m_keys = [];
-    this.m_strMessageDecoded = '';
     this.m_crc = 0;
     this.m_randomizer = new Randomizer();
     this.init();
@@ -20,26 +19,15 @@ class Coder {
    * Initialize modified keys and seeds
    */
   init() {
-    this.m_keys = [];
-    for(let i = 0; i < NUM_KEYS; i++) {
-      this.m_keys.push(55);
-    }
-    this.m_keys[0] =  0xd76aa478;
-    this.m_keys[1] =  0x4787c62a;
-    this.m_keys[2] =  0xa8304613;
-    this.m_keys[3] =  0xffff5bb1;
-    this.m_keys[4] =  0x8b44f7af;
-    this.m_keys[5] =  0x698098d8;
-    this.m_keys[6] =  0x6b901122; 
-    this.m_keys[7] =  0xfd987193;
-    this.m_keys[8] =  0xa679438e;
-    this.m_keys[9] =  0x49b40821;
-    this.m_keys[10] =  0xd62f105d;
-    this.m_keys[11] =  0x02441453;
-    this.m_keys[12] =  0xd8a1e681;
-    this.m_keys[13] =  0xe7d3fbc8;
-    this.m_keys[14] =  0xd4ef3085;
-    this.m_keys[15] =  0x8f0ccc92;
+    this.m_keys = new Array(NUM_KEYS);
+    this.m_keys[0] =  0xd76aa478; this.m_keys[1] =  0x4787c62a;
+    this.m_keys[2] =  0xa8304613; this.m_keys[3] =  0xffff5bb1;
+    this.m_keys[4] =  0x8b44f7af; this.m_keys[5] =  0x698098d8;
+    this.m_keys[6] =  0x6b901122; this.m_keys[7] =  0xfd987193;
+    this.m_keys[8] =  0xa679438e; this.m_keys[9] =  0x49b40821;
+    this.m_keys[10] =  0xd62f105d; this.m_keys[11] =  0x02441453;
+    this.m_keys[12] =  0xd8a1e681; this.m_keys[13] =  0xe7d3fbc8;
+    this.m_keys[14] =  0xd4ef3085; this.m_keys[15] =  0x8f0ccc92;
     this.m_randomizer.init();
   }
   // init updateable keys with password string
@@ -72,7 +60,6 @@ class Coder {
     this.init();
     this.setPass(strPass);
 
-    this.m_strMessageDecoded = strMsg;
     const len = strMsg.length;
     this.m_code = [];
     for(let i = 0; i < len; i++) {
@@ -98,8 +85,7 @@ class Coder {
       crc += (code * k) & 0x3fffffff;
       this.updateKeys();
     }
-    crc = crc & 0x3fffffff;
-    return crc;
+    return (crc & 0x3fffffff);
   }
   static leftRotate(x, c) {
     return (x << c) | (x >> (32 - c));
@@ -110,10 +96,8 @@ class Coder {
   updateKeys()
   {
     for (let i = 0; i < NUM_KEYS; i += 4) {
-      let a = this.m_keys[i + 0];
-      let b = this.m_keys[i + 1];
-      let c = this.m_keys[i + 2];
-      let d = this.m_keys[i + 3];
+      let a = this.m_keys[i + 0]; let b = this.m_keys[i + 1];
+      let c = this.m_keys[i + 2]; let d = this.m_keys[i + 3];
 
       const e = (b & c) | ((~b) & d);
       const f = (d & b) | ((~d) & c);
@@ -123,10 +107,8 @@ class Coder {
       b = (Coder.leftRotate(g, 11) + h * 9) & 0x3fffffff;
       c = (Coder.leftRotate(f, 4) + h * 9871) & 0x3fffffff;
       d = (Coder.leftRotate(h, 21) + e * 0x87a51) & 0x3fffffff;
-      this.m_keys[i + 0] = a;
-      this.m_keys[i + 1] = b;
-      this.m_keys[i + 2] = c;
-      this.m_keys[i + 3] = d;
+      this.m_keys[i + 0] = a; this.m_keys[i + 1] = b;
+      this.m_keys[i + 2] = c; this.m_keys[i + 3] = d;
     }
   }
   /**
@@ -191,8 +173,7 @@ class Coder {
    * Get next offset for pixel write/read
    */
   getNextOff() {
-    const ret = 1 + (this.m_randomizer.getNextRand() & 7);
-    return ret;
+    return (1 + (this.m_randomizer.getNextRand() & 7));
   }
   /**
    * Test write to bit array
@@ -201,8 +182,6 @@ class Coder {
    * @param {number} numElems - num elems in array
    */
   putToBitArray(arr, numElems) {
-    // console.log(`putToBitArray. num bytes = ${this.m_code.length}`);
-    // console.log(`putToBitArray. crc = ${this.m_crc}`);
     const numBits = (this.m_code.length + 2) * 32;
     if (numBits > numElems) {
       console.log(`too short bit array!, need ${numBits} elements`);
@@ -220,15 +199,9 @@ class Coder {
     let numDwords = 0;
     for (b = 0; b < 32; b++) {
       const valBit = arr[b];
-      const mask = valBit << b;
-      numDwords |= mask;
+      numDwords |= (valBit << b);
     }
-    // console.log(`getFromBitArray. num bytes = ${numBytes}`);
-
-    this.m_code = [];
-    for (let i = 0; i < numDwords; i++) {
-      this.m_code.push(555);
-    }
+    this.m_code = new Array(numDwords);
     const numBits = numDwords * 32;
     if (numBits + 16 > numElems) {
       console.log(`too short bit array: Need more ${numBits + 16}`);
@@ -245,17 +218,14 @@ class Coder {
       // next bit
       indBit++;
       if (indBit >= 32) {
-        indBit = 0;
-        this.m_code[indDword] = valDword;
-        valDword = 0;
-        indDword++;
+        indBit = 0; this.m_code[indDword] = valDword;
+        valDword = 0; indDword++;
       }
     } // for
     let valCrc = 0;
     for (b = 0; b < 32; b++) {
       const valBit = arr[32 + numBits + b];
-      const mask = valBit << b;
-      valCrc |= mask;
+      valCrc |= (valBit << b);
     }
     this.decode();
     const strRes = this.getStringFromCode();
@@ -346,10 +316,7 @@ class Coder {
       console.log(`too less or many dwords = ${numDwords}`);
       return '';
     }
-    this.m_code = [];
-    for (let i = 0; i < numDwords; i++) {
-      this.m_code.push(555);
-    }
+    this.m_code = new Array(numDwords);
     const okR = this.readCodeFromPixelArray(arr, numElems, iterRead, numDwords);
     if (!okR) {
       return '';
